@@ -86,14 +86,17 @@ class IncomeStatement::SpendingComparisonTest < ActiveSupport::TestCase
   end
 
   test "an unfinished quarter compares only with days before it" do
-    # 10 a day for the year before the quarter, 30 a day in it: three times normal
-    quarter = Period.custom(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 12, 31))
-    (Date.new(2025, 10, 1)...quarter.start_date).each { |d| create_transaction(account: @account, date: d, amount: 10, category: @travel) }
-    (quarter.start_date..Date.new(2026, 12, 20)).each { |d| create_transaction(account: @account, date: d, amount: 30, category: @travel) }
+    # 10 a day for the year before the quarter, 30 a day in it: three times normal.
+    # Today is as_of, so the quarter's spending isn't scheduled (future-dated).
+    travel_to Date.new(2026, 12, 20) do
+      quarter = Period.custom(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 12, 31))
+      (Date.new(2025, 10, 1)...quarter.start_date).each { |d| create_transaction(account: @account, date: d, amount: 10, category: @travel) }
+      (quarter.start_date..Date.current).each { |d| create_transaction(account: @account, date: d, amount: 30, category: @travel) }
 
-    result = IncomeStatement::SpendingComparison.new(IncomeStatement.new(@family), period: quarter, history_start: Date.new(2025, 10, 1), as_of: Date.new(2026, 12, 20))
+      result = IncomeStatement::SpendingComparison.new(IncomeStatement.new(@family), period: quarter, history_start: Date.new(2025, 10, 1), as_of: Date.current)
 
-    assert_in_delta 2, result.rows.find { |r| r.category == @travel }.ratio, 0.01
+      assert_in_delta 2, result.rows.find { |r| r.category == @travel }.ratio, 0.01
+    end
   end
 
   test "a bill paid on the 1st reads as normal early in the month" do
