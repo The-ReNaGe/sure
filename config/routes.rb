@@ -301,6 +301,8 @@ Rails.application.routes.draw do
   end
 
   # AI chats
+  resource :chat_reservation, only: :create
+
   resources :chats do
     resources :messages, only: :create do
       member do
@@ -564,13 +566,14 @@ Rails.application.routes.draw do
 
   resources :transactions, only: %i[index new create show update destroy] do
     resource :split, only: %i[new create edit update destroy]
-    resource :transfer_match, only: %i[new create]
+    resource :transfer_match, only: %i[new create destroy]
     resource :pending_duplicate_merges, only: %i[new create]
     resource :category, only: :update, controller: :transaction_categories
     resources :attachments, only: %i[show create destroy], controller: :transaction_attachments
 
     collection do
       delete :clear_filter
+      get :name_suggestions
     end
 
     member do
@@ -636,6 +639,13 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :auto_matches, only: %i[index] do
+    collection do
+      patch :update_settings
+      patch :bulk_update
+    end
+  end
+
   resources :insights, only: %i[index] do
     collection do
       post :refresh
@@ -683,6 +693,7 @@ Rails.application.routes.draw do
       get :select_provider
       get :confirm_unlink
       delete :unlink
+      delete :clear_filter
     end
 
     collection do
@@ -795,6 +806,7 @@ Rails.application.routes.draw do
       end
       resource :usage, only: [ :show ], controller: :usage
       resource :cash_flow, only: [ :show ], controller: :cash_flows
+      resource :spending_vs_normal, only: [ :show ], controller: :spending_vs_normal
       resource :balance_sheet, only: [ :show ], controller: :balance_sheet
       resources :insights, only: [ :index ]
       resources :push_subscriptions, only: [ :create, :destroy ]
